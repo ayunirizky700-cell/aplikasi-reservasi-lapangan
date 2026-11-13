@@ -245,7 +245,7 @@ $total_pesanan = $stmt->fetchColumn();
                 elseif (strpos($sport, 'badminton') !== false)
                     $icon = '🏸';
                 ?>
-                <a href="pesanan.php?sport=<?= urlencode($kat['sport_type']) ?>" class="card-kategori">
+                <a href="lapangan.php?sport=<?= urlencode($kat['sport_type']) ?>" class="card-kategori">
                     <span class="icon-kategori"><?= $icon ?></span>
                     <h3>Lapangan <?= htmlspecialchars($kat['sport_type']) ?></h3>
                     <span class="btn-pesan">Lihat Lapangan →</span>

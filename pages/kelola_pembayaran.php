@@ -19,13 +19,14 @@ if (isset($_GET['id']) && isset($_GET['status'])) {
         $stmt = $pdo->prepare("UPDATE payments SET payment_status = ? WHERE id = ?");
         $stmt->execute([$status_baru, $id_pembayaran]);
 
-        // Jika diterima, update status reservasi jadi completed
+        // JIKA DITERIMA: Ubah status reservasi jadi 'confirmed' (Bukan completed)
         if ($status_baru == 'paid') {
             $stmt2 = $pdo->prepare("SELECT reservation_id FROM payments WHERE id = ?");
             $stmt2->execute([$id_pembayaran]);
             $res_id = $stmt2->fetchColumn();
             if ($res_id) {
-                $stmt3 = $pdo->prepare("UPDATE reservations SET status = 'completed' WHERE id = ?");
+                // UBAH JADI CONFIRMED agar alarm mulai berjalan
+                $stmt3 = $pdo->prepare("UPDATE reservations SET status = 'confirmed' WHERE id = ?");
                 $stmt3->execute([$res_id]);
             }
         }
@@ -67,7 +68,7 @@ $pembayaran = $pdo->query($query)->fetchAll();
         .badge-failed { background: #fce4ec; color: #c62828; }
         
         .btn { padding: 8px 15px; border-radius: 6px; font-size: 12px; font-weight: bold; text-decoration: none; display: inline-block; color: white; margin-right: 5px; margin-bottom: 5px;}
-        .btn-primary { background: #4fc3f7; } /* Tombol Lihat Bukti */
+        .btn-primary { background: #4fc3f7; } 
         .btn-success { background: #4caf50; }
         .btn-danger { background: #f44336; }
 
@@ -110,7 +111,6 @@ $pembayaran = $pdo->query($query)->fetchAll();
                         <?php if (count($pembayaran) > 0): ?>
                             <?php foreach ($pembayaran as $p): ?>
                             <?php 
-                                // LOGIKA: Jika kosong, anggap 'pending'
                                 $status_asli = $p['payment_status'];
                                 $status_tampil = empty($status_asli) ? 'pending' : strtolower($status_asli); 
                             ?>
@@ -125,16 +125,11 @@ $pembayaran = $pdo->query($query)->fetchAll();
                                 </td>
                                 <td>
                                     <?php if ($status_tampil == 'pending'): ?>
-                                        
-                                        <!-- TOMBOL LIHAT BUKTI (Hanya muncul jika ada file yang di-upload) -->
                                         <?php if (!empty($p['bukti_transfer'])): ?>
                                             <a href="../uploads/<?= $p['bukti_transfer'] ?>" target="_blank" class="btn btn-primary">🖼️ Lihat Bukti</a>
                                         <?php endif; ?>
-
-                                        <!-- Tombol Terima / Tolak -->
                                         <a href="kelola_pembayaran.php?id=<?= $p['id'] ?>&status=paid" class="btn btn-success">✅ Terima</a>
                                         <a href="kelola_pembayaran.php?id=<?= $p['id'] ?>&status=failed" class="btn btn-danger">❌ Tolak</a>
-                                    
                                     <?php else: ?>
                                         <span style="color:#999;">-</span>
                                     <?php endif; ?>

@@ -36,8 +36,14 @@ $query_tagihan = "SELECT r.*, f.name as lapangan FROM reservations r JOIN fields
 $stmt = $pdo->query($query_tagihan);
 $tagihan = $stmt->fetchAll();
 
-// Riwayat pembayaran
-$stmt2 = $pdo->query("SELECT * FROM payments ORDER BY payment_date DESC");
+/// Riwayat pembayaran (HANYA MILIK USER YANG LOGIN)
+$query_riwayat = "SELECT p.*, r.reservation_code 
+                  FROM payments p 
+                  JOIN reservations r ON p.reservation_id = r.id 
+                  WHERE r.customer_id = ? 
+                  ORDER BY p.payment_date DESC";
+$stmt2 = $pdo->prepare($query_riwayat);
+$stmt2->execute([$user_id]); // <-- Filter berdasarkan user yang login
 $riwayat = $stmt2->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -285,7 +291,8 @@ $riwayat = $stmt2->fetchAll();
                             <option value="">-- Pilih Pesanan --</option>
                             <?php foreach ($tagihan as $t): ?>
                                 <option value="<?= $t['id'] ?>"><?= $t['reservation_code'] ?> - <?= $t['lapangan'] ?> (Rp
-                                    <?= number_format($t['total_price'], 0, ',', '.') ?>)</option>
+                                    <?= number_format($t['total_price'], 0, ',', '.') ?>)
+                                </option>
                             <?php endforeach; ?>
                         </select>
                     </div>
