@@ -8,15 +8,14 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] != 'admin') {
 }
 
 // ==========================================
-// AMBIL STATISTIK (BAGIAN INI YANG TADI HILANG)
+// AMBIL STATISTIK
 // ==========================================
 $total_lapangan = $pdo->query("SELECT COUNT(*) FROM fields")->fetchColumn();
 $total_reservasi = $pdo->query("SELECT COUNT(*) FROM reservations")->fetchColumn();
 $total_pending = $pdo->query("SELECT COUNT(*) FROM payments WHERE payment_status = 'pending' OR payment_status IS NULL")->fetchColumn();
-// Mengambil total pendapatan dari total_price pesanan yang sudah PAID (Lunas)
-$query_pendapatan = "SELECT SUM(r.total_price) FROM reservations r 
-                     JOIN payments p ON r.id = p.reservation_id 
-                     WHERE p.payment_status = 'paid'";
+
+// PERBAIKAN FINAL: Ambil total pendapatan dari tabel payments (kolom amount)
+$query_pendapatan = "SELECT SUM(amount) FROM payments WHERE payment_status = 'paid'";
 $total_pendapatan = $pdo->query($query_pendapatan)->fetchColumn();
 
 // ==========================================
@@ -101,7 +100,7 @@ $pembayaran_terbaru = $pdo->query($query_pay)->fetchAll();
 <body>
     <!-- NAVBAR -->
     <div class="navbar">
-        <a href="dashboard.php" class="logo">🏟️ Sport<span>Arena</span> (Admin)</a>
+        <a href="dashboard.php" class="logo"> Sport<span>Arena</span> (Admin)</a>
         <div class="nav-links">
             <a href="dashboard.php" class="active">Dashboard</a>
             <a href="kelola_lapangan.php">Lapangan</a>
@@ -148,6 +147,7 @@ $pembayaran_terbaru = $pdo->query($query_pay)->fetchAll();
                 <div class="stat-icon purple">💰</div>
                 <div class="stat-info">
                     <h3>Total Pendapatan</h3>
+                    <!-- Format Rupiah sudah aman menggunakan number_format -->
                     <h2>Rp <?= number_format($total_pendapatan ?? 0, 0, ',', '.') ?></h2>
                 </div>
             </a>
