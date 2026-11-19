@@ -23,11 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     try {
-        $stmt = $pdo->prepare("INSERT INTO payments (reservation_id, payment_date, amount, payment_method, payment_status, bukti_transfer) VALUES (?, NOW(), ?, ?, 'pending', ?)");
+        $stmt = $pdo->prepare("INSERT INTO payments (reservation_id, payment_date, amount, payment_method, payment_status, bukti_transfer) 
+        VALUES (?, NOW(), ?, ?, 'pending', ?)");
         $stmt->execute([$res_id, $amount, $method, $bukti]);
-        $msg = '<div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px;">✅ Pembayaran berhasil dikirim! Menunggu konfirmasi admin.</div>';
+        $msg = '<div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px;">
+        ✅ Pembayaran berhasil dikirim! Menunggu konfirmasi admin.</div>';
     } catch (Exception $e) {
-        $msg = '<div style="background:#f8d7da; color:#721c24; padding:15px; border-radius:8px; margin-bottom:20px;">❌ Error: ' . $e->getMessage() . '</div>';
+        $msg = '<div style="background:#f8d7da; color:#721c24; padding:15px; border-radius:8px; margin-bottom:20px;">
+        ❌ Error: ' . $e->getMessage() . '</div>';
     }
 }
 

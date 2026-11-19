@@ -168,10 +168,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             <div class="error"><?= htmlspecialchars($error) ?></div>
         <?php endif; ?>
 
-        <!-- Tombol Logout Darurat (kalau nyangkut session) -->
-        <form method="POST" action="logout.php" style="margin-bottom: 15px;">
-            <button type="submit" style="background: #dc3545;">🚪 Logout (Clear Session)</button>
-        </form>
 
         <hr style="margin: 15px 0;">
 
