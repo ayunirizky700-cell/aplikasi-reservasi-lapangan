@@ -12,7 +12,7 @@ $msg = '';
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $res_id = $_POST['reservation_id'];
     $amount = $_POST['amount'];
-    $method = $_POST['method'];
+    $method = isset($_POST['method']) && $_POST['method'] !== '' ? trim($_POST['method']) : 'Tidak Diketahui';
     $bukti = '';
 
     // Proses Upload Bukti Transfer
@@ -25,7 +25,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         $stmt = $pdo->prepare("INSERT INTO payments (reservation_id, payment_date, amount, payment_method, payment_status, bukti_transfer) 
         VALUES (?, NOW(), ?, ?, 'pending', ?)");
+
         $stmt->execute([$res_id, $amount, $method, $bukti]);
+
         $msg = '<div style="background:#d4edda; color:#155724; padding:15px; border-radius:8px; margin-bottom:20px;">
         ✅ Pembayaran berhasil dikirim! Menunggu konfirmasi admin.</div>';
     } catch (Exception $e) {
@@ -39,14 +41,14 @@ $query_tagihan = "SELECT r.*, f.name as lapangan FROM reservations r JOIN fields
 $stmt = $pdo->query($query_tagihan);
 $tagihan = $stmt->fetchAll();
 
-/// Riwayat pembayaran (HANYA MILIK USER YANG LOGIN)
+/// Riwayat pembayaran
 $query_riwayat = "SELECT p.*, r.reservation_code 
                   FROM payments p 
                   JOIN reservations r ON p.reservation_id = r.id 
                   WHERE r.customer_id = ? 
                   ORDER BY p.payment_date DESC";
 $stmt2 = $pdo->prepare($query_riwayat);
-$stmt2->execute([$user_id]); // <-- Filter berdasarkan user yang login
+$stmt2->execute([$user_id]);
 $riwayat = $stmt2->fetchAll();
 ?>
 <!DOCTYPE html>
@@ -236,7 +238,6 @@ $riwayat = $stmt2->fetchAll();
             color: #c62828;
         }
 
-        /* Kotak QRIS */
         #qrisBox {
             display: none;
             text-align: center;
@@ -251,6 +252,14 @@ $riwayat = $stmt2->fetchAll();
             max-width: 200px;
             margin-bottom: 10px;
             border-radius: 8px;
+        }
+
+        /* Style untuk pesan error */
+        .error-text {
+            color: red;
+            font-size: 12px;
+            margin-top: 5px;
+            display: none;
         }
 
         @media (max-width: 768px) {
@@ -287,15 +296,15 @@ $riwayat = $stmt2->fetchAll();
             <!-- Form Bayar -->
             <div class="card">
                 <h3>Bayar Tagihan</h3>
-                <form method="POST" enctype="multipart/form-data">
+                <!-- Tambahkan onsubmit untuk validasi -->
+                <form method="POST" enctype="multipart/form-data" onsubmit="return validasiForm()">
                     <div class="form-group">
                         <label>Pilih Pesanan</label>
                         <select name="reservation_id" required>
                             <option value="">-- Pilih Pesanan --</option>
                             <?php foreach ($tagihan as $t): ?>
                                 <option value="<?= $t['id'] ?>"><?= $t['reservation_code'] ?> - <?= $t['lapangan'] ?> (Rp
-                                    <?= number_format($t['total_price'], 0, ',', '.') ?>)
-                                </option>
+                                    <?= number_format($t['total_price'], 0, ',', '.') ?>)</option>
                             <?php endforeach; ?>
                         </select>
                     </div>
@@ -307,7 +316,7 @@ $riwayat = $stmt2->fetchAll();
 
                     <div class="form-group">
                         <label>Metode Pembayaran</label>
-                        <select name="method" id="metode" required onchange="cekMetode()">
+                        <select name="method" id="pilihan_metode" required onchange="cekMetode()">
                             <option value="">-- Pilih Metode --</option>
                             <optgroup label="🏦 Bank Transfer">
                                 <option value="Transfer BCA">Transfer BCA</option>
@@ -324,7 +333,7 @@ $riwayat = $stmt2->fetchAll();
                         </select>
                     </div>
 
-                    <!-- BOX QRIS (Hanya muncul kalau pilih QRIS) -->
+                    <!-- BOX QRIS -->
                     <div id="qrisBox">
                         <p style="font-size: 13px; font-weight: bold; margin-bottom: 10px;">Silakan Scan QRIS di bawah
                             ini:</p>
@@ -335,9 +344,11 @@ $riwayat = $stmt2->fetchAll();
                     <!-- UPLOAD BUKTI -->
                     <div class="form-group" id="uploadBox" style="display: none;">
                         <label>Upload Bukti Pembayaran</label>
-                        <input type="file" name="bukti_transfer" accept="image/*">
+                        <input type="file" name="bukti_transfer" id="file_bukti" accept="image/*">
                         <small style="color: #999; font-size: 11px;">Wajib diisi jika memilih
                             Transfer/QRIS/E-Wallet</small>
+                        <div id="error_file" class="error-text">❌ Anda wajib mengunggah bukti pembayaran untuk metode
+                            ini!</div>
                     </div>
 
                     <button type="submit" class="btn">Kirim Pembayaran</button>
@@ -363,9 +374,36 @@ $riwayat = $stmt2->fetchAll();
                                     <tr>
                                         <td><?= date('d/m/y', strtotime($r['payment_date'])) ?></td>
                                         <td>Rp <?= number_format($r['amount'], 0, ',', '.') ?></td>
-                                        <td><?= htmlspecialchars($r['payment_method']) ?></td>
-                                        <td><span
-                                                class="badge bg-<?= strtolower($r['payment_status']) ?>"><?= strtoupper($r['payment_status']) ?></span>
+                                        <td>
+                                            <?php
+                                            $metode_tampil = '-';
+                                            if (!empty($r['payment_method'])) {
+                                                $metode_tampil = $r['payment_method'];
+                                            } elseif (!empty($r['method'])) {
+                                                $metode_tampil = $r['method'];
+                                            }
+                                            echo htmlspecialchars($metode_tampil);
+                                            ?>
+                                        </td>
+                                        <td>
+                                            <?php
+                                            $status_tampil = 'pending';
+                                            if (!empty($r['payment_status'])) {
+                                                $status_tampil = $r['payment_status'];
+                                            } elseif (!empty($r['status'])) {
+                                                $status_tampil = $r['status'];
+                                            }
+
+                                            $warna_badge = 'bg-pending';
+                                            if (strtolower($status_tampil) == 'paid' || strtolower($status_tampil) == 'lunas') {
+                                                $warna_badge = 'bg-paid';
+                                            } elseif (strtolower($status_tampil) == 'failed' || strtolower($status_tampil) == 'gagal') {
+                                                $warna_badge = 'bg-failed';
+                                            }
+                                            ?>
+                                            <span class="badge <?= $warna_badge ?>">
+                                                <?= strtoupper(htmlspecialchars($status_tampil)) ?>
+                                            </span>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>
@@ -381,9 +419,13 @@ $riwayat = $stmt2->fetchAll();
 
     <script>
         function cekMetode() {
-            var metode = document.getElementById('metode').value;
+            var metode = document.getElementById('pilihan_metode').value;
             var qrisBox = document.getElementById('qrisBox');
             var uploadBox = document.getElementById('uploadBox');
+            var errorFile = document.getElementById('error_file');
+
+            // Sembunyikan pesan error setiap kali metode diganti
+            errorFile.style.display = 'none';
 
             if (metode === 'QRIS') {
                 qrisBox.style.display = 'block';
@@ -398,6 +440,26 @@ $riwayat = $stmt2->fetchAll();
                 qrisBox.style.display = 'none';
                 uploadBox.style.display = 'none';
             }
+        }
+
+        // FUNGSI VALIDASI SEBELUM FORM DIKIRIM
+        function validasiForm() {
+            var metode = document.getElementById('pilihan_metode').value;
+            var fileInput = document.getElementById('file_bukti');
+            var errorFile = document.getElementById('error_file');
+
+            // Jika metode BUKAN Tunai DAN file kosong
+            if (metode !== 'Tunai' && metode !== '') {
+                if (fileInput.files.length === 0) {
+                    // Munculkan pesan error
+                    errorFile.style.display = 'block';
+                    fileInput.focus();
+                    // Hentikan proses submit (return false)
+                    return false;
+                }
+            }
+            // Jika aman, lanjutkan submit (return true)
+            return true;
         }
     </script>
 </body>
